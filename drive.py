@@ -20,6 +20,17 @@ import tensorflow as tf
 tf.python.control_flow_ops = tf
 
 
+import cv2
+
+def preprocess_img(img, color_space='YCrCb'):
+    if color_space == 'YCrCb':
+        img = cv2.cvtColor(img, cv2.COLOR_RGB2YCrCb)
+        img = cv2.equalizeHist(img[45:135,25:295,0]) # take the luminance channel
+    if color_space == 'HSV':
+        img = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
+        img = cv2.equalizeHist(img[45:135,25:295,1]) # take the luminance channel
+    return img.astype('float') / 255.0  - 0.5
+
 sio = socketio.Server()
 app = Flask(__name__)
 model = None
@@ -27,6 +38,7 @@ prev_image_array = None
 
 @sio.on('telemetry')
 def telemetry(sid, data):
+    #print("Telemetry")
     # The current steering angle of the car
     steering_angle = data["steering_angle"]
     # The current throttle of the car
@@ -37,9 +49,14 @@ def telemetry(sid, data):
     imgString = data["image"]
     image = Image.open(BytesIO(base64.b64decode(imgString)))
     image_array = np.asarray(image)
-    transformed_image_array = image_array[None, :, :, :]
+
+    img = preprocess_img(image_array, color_space='HSV').reshape((90,270,1))
+
+    transformed_image_array = img[None, :, :, :]
+
     # This model currently assumes that the features of the model are just the images. Feel free to change this.
     steering_angle = float(model.predict(transformed_image_array, batch_size=1))
+
     # The driving model currently just outputs a constant throttle. Feel free to edit this.
     throttle = 0.2
     print(steering_angle, throttle)
