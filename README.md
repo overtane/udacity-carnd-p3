@@ -4,6 +4,12 @@
 
 <img src="images/behavioral_cloning.jpg" width="480" alt="Crash course" />
 
+The purpose of the project is to train a car (a simulated car) to driving autonomously on a
+closed track. Training data is take from previous experiences on a track under a human 
+control. Input data set consist of images of the track and corresponding steering angles.
+The task is to build a convolutional neural network and train the network to predict 
+steering angles. Given a snapshot from a track, the network should be able to output
+a steering angle related to the image.
 
 
 ## 1. Getting Data
@@ -193,10 +199,14 @@ Initially, I used validation data set for tracking how well augmented data match
 After moving to 90x320 images, no shifted images were used. Also, at this point was quite clear, that only one epoch of all images is 
 enough to produce the basic weight set, so no validation was needed.
 
-The model was validated on the training track. And also tested on the testing track. When the car could drive autonomously both tracks, the
+The model was validated on the training track. And also tested on the testing track. Because the car could drive autonomously both tracks, the
 model was assumed good enough. 
 
-If programmatic validation is needed, the augmentation is easily added to the generator.
+- [VIDEO: Driving the training track](https://youtu.be/6TQsoolJVnI): Training track is the one that 
+was used for model training.
+- [VIDEO: Driving the test track](https://youtu.be/CZLGLrP3oYU): Test track is used to test 
+model's robustness. Car has never 'seen' the test track before. It is steering solely from the 
+basis of the training on training track. 
 
 
 ## 7. Code and Files
@@ -208,8 +218,16 @@ to keep steady 20 mph speed (without too much luck  - more serious effort is nee
 - `model.json`: loadable Keras model
 - `model.h5`: weights for the model
 
+## 8. Improvements
 
-## 8. Conclusion
+- Although being much better than early versions, the car still don't track very well on 
+straight sections. 
+- Throttling good be better controlled
+- Data augmenting could be useful for more generalized use cases (more different tracks)
+- If programmatic validation is needed, the augmentation is easily added to the generator.
+
+
+## 9. Conclusion
 
 The project required a lot of work, and moments of despair could not have been avoided. On the other hand, it also taught
 many things. I have enjoyed the numerous blog posts of the fellow students and all slack conversations. It is wonderful how the
