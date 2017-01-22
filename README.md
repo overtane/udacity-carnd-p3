@@ -88,6 +88,9 @@ the last convolutional layer. It was removed later, because the produce model pe
 Also regularisers were removed, because those seem to have no effect to the trained model. Same was with
 pooling layer.
 
+Also (3,1,1) input layer was tested. This should have been helped with colour images to detect the best color
+plane by the network. But the layer did not improve the performance of this network.
+
 The final CNN corresponds quite closely to the original from NVIDIA. The input is different, because I used
 monochromatic images. The model used mean squared error as loss function,
 and Adam optimiser with default learning rate as starting point.
@@ -200,7 +203,6 @@ If programmatic validation is needed, the augmentation is easily added to the ge
 
 - `nvidia_keras.ipynb`: Jupiter Notebook that contain all kind of experiments, but also the code that was used to produce the model.
 - `model.py`: the code that produced the model. **NOTE:** This code has not been run ever from this file! The content is extract from `nvidia_keras.ipynb` only to clarify which part of the notebook code contributes to the model.
-in order to clarify what code was actually used.
 - `drive.py`: Data producer for the simulator, originally from Udacity. I added some image preprocessing and naive dynamic throttling, which tries 
 to keep steady 20 mph speed (without too much luck  - more serious effort is needed here)
 - `model.json`: loadable Keras model
