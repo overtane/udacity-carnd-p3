@@ -22,14 +22,10 @@ tf.python.control_flow_ops = tf
 
 import cv2
 
-def preprocess_img(img, color_space='YCrCb'):
-    #if color_space == 'YCrCb':
-    #    img = cv2.cvtColor(img, cv2.COLOR_RGB2YCrCb)
-    #    img = cv2.equalizeHist(img[45:135,25:295,0]) # take the luminance channel
-    #if color_space == 'HSV':
-    #    img = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
-    #    img = cv2.equalizeHist(img[45:135,25:295,1]) # take the luminance channel
-    img = img[45:135,25:295,:]
+def preprocess_img(img):
+    img = img[60:135,25:295]
+    img = cv2.resize(img, (200,66), interpolation=cv2.INTER_AREA)    
+    img = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)[:,:,1]
     return img.astype('float') / 255.0  - 0.5
 
 sio = socketio.Server()
@@ -51,7 +47,7 @@ def telemetry(sid, data):
     image = Image.open(BytesIO(base64.b64decode(imgString)))
     image_array = np.asarray(image)
 
-    img = preprocess_img(image_array, color_space='HSV').reshape((90,270,3))
+    img = preprocess_img(image_array).reshape((66,200,1))
 
     transformed_image_array = img[None, :, :, :]
 
@@ -59,10 +55,17 @@ def telemetry(sid, data):
     steering_angle = float(model.predict(transformed_image_array, batch_size=1))
 
     # The driving model currently just outputs a constant throttle. Feel free to edit this.
-    if float(speed) < 10.0:
-        throttle = 0.6
+    if float(speed) < 20.0:
+        throttle = float(throttle) + 0.01
+    elif float(speed) > 20.0:
+        throttle =  float(throttle) - 0.02
     else:
-        throttle =  6.0 / float(speed)
+        throttle = float(throttle)
+    if throttle < 0:
+        throttle = 0.0
+    if throttle > 1.0:
+        throttle = 1.0
+    #throttle = 0.2
     print(steering_angle, throttle, speed)
     send_control(steering_angle, throttle)
 
