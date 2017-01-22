@@ -87,19 +87,22 @@ however, I was struggling with data preprocessing and data quality issues. So ve
 [NVIDIA's blog](https://devblogs.nvidia.com/parallelforall/deep-learning-self-driving-cars/) and 
 [the research paper](https://arxiv.org/pdf/1604.07316v1.pdf). 
 
-Keras was used to implement the model.
+The chosen model was assumed to fit perfectly to the problem, because it has been used for 
+similar problems earlier. Keras was used to implement the model.
 
-During the process I also tried adding dropouts, pooling layers and L2-regularisers. Dropout was added after 
-the last convolutional layer. It was removed later, because the produce model performed better without it. 
-Also regularisers were removed, because those seem to have no effect to the trained model. Same was with
+During the project there was several attempts to modify the model. All of those were abandoned and not 
+taken to the final model.I tried adding dropouts, pooling layers and L2-regularisers. Dropout was added after 
+the last convolutional layer. It was removed, because the trained  model performed better without it. 
+Also regularisers were removed, because those seemed not to any effect on the trained model. Same applied to
 pooling layer.
 
 Also (3,1,1) input layer was tested. This should have been helped with colour images to detect the best color
 plane by the network. But the layer did not improve the performance of this network.
 
-The final CNN corresponds quite closely to the original from NVIDIA. The input is different, because I used
-monochromatic images. The model used mean squared error as loss function,
-and Adam optimiser with default learning rate as starting point.
+The final CNN corresponds quite closely to the original from NVIDIA. The input is different,
+(66,200,1) instead of (66,200,3) 
+because I used monochromatic images. The model used mean squared error as loss function,
+and Adam optimiser with default learning rate as a starting point.
 
 NVIDIA model as printed from Keras model.summary()
 
