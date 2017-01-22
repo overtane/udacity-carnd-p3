@@ -4,12 +4,12 @@
 
 <img src="images/behavioral_cloning.jpg" width="480" alt="Crash course" />
 
-The purpose of the project is to train a car (a simulated car) to driving autonomously on a
-closed track. Training data is take from previous experiences on a track under a human 
-control. Input data set consist of images of the track and corresponding steering angles.
-The task is to build a convolutional neural network and train the network to predict 
-steering angles. Given a snapshot from a track, the network should be able to output
-a steering angle related to the image.
+The purpose of the project is to train a car (a simulated car) to drive autonomously on a
+closed track. Training data is taken from previous experiences from the track under a human 
+control. The input data set consist of images of vehicles front cameras  and the corresponding
+steering angles. The mission is to build a convolutional neural network, and train the network
+to predict steering angles. Given a snapshot of a track, the network should be able to output
+the desired steering angle of the car.
 
 
 ## 1. Getting Data
