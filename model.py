@@ -179,9 +179,6 @@ def nvidia_model():
     model.add(Dense(1, name='y_pred'))
     return model
 
-model = nvidia_model()
-modelname = 'nvidia'
-model.summary()
 
 
 from keras.models import model_from_json
@@ -286,5 +283,15 @@ def finetune_model(modelname, model_version, project_path):
                               validation_data=None,
                               callbacks=[history])
     return model
+
+
+
+#
+# NOTE: this has not been run. The real dev env in nvidia-keras.ipynb. See README!
+#
+
+model = nvidia_model()
+model.summary()
+train_model(model, 'nvidia', '/Some/Path' )
 
 
