@@ -4,18 +4,18 @@
 
 <img src="images/behavioral_cloning.jpg" width="480" alt="Crash course" />
 
-This is ...
+
 
 ## 1. Getting Data
 
 I started with the Udacity data set. The problem with this data is that it has excess zero-angle samples and a lot of jumps
-to zero (actually gaps in data). This is probably because of the recording method, which does not correcpond to real driving conditions.
+to zero (actually gaps in data). This is probably because of the recording method, which does not correspond to real driving conditions.
 
 Because of that, I soon ended up recording data myself. Luckily I had access to PS3 controller, which I could pair with my MacBook. 
 First I recorded two laps, one each direction. The final data-set consists of images of four full laps, two clockwise and
-two counter-clockwise. This gives rather even distribution of data.  
+two counter-clockwise. This gives rather even distribution of data. Also, joystick does not produce so many 'returns to zero' as keyboard does.
 
-Alltogether the dataset consisted of 12,384 images. There was still many zero-angle images and images very close to zero-angle.
+Altogether the dataset consisted of 12,384 images. There was still many zero-angle images and images very close to zero-angle.
 The histogram below illustrates the distribution of steering angles in the data.
 
 <img src="images/angle_distribution.png" width="480" alt="Angle distribution" />
@@ -37,43 +37,63 @@ The total sum on steering angles tells that there are a little bit more or steep
 The motivation for collecting a large data set was, that one could avoid data augmentation. Although very useful in a general case,
 augmentation would not be necessary in this special case if the data covered large enough set of situations. 
 
-First pre-processing was done to image list (driving_log.csv). All images that had larger steering angle than abs(0.5) were remove.
+First step of pre-processing was done to image list (driving_log.csv). All images that had larger steering angle than abs(0.5) were remove.
 There was only a few of those. These situations were human errors in operating joystick.
 
-During the work, several pre-processing techniques were considered:
-* Brightness equalization. This was done in YCrCB space (later also HSV). Equalization increases contrast of the picture
+
+During the project, several pre-processing techniques were considered:
+* Brightness equalisation. This was done in YCrCB space (later also HSV). Equalisation increases contrast of the picture
 radically and makes the road area very distinct and easily observable for a human eye.
-* Using only lumination channel of the image. Monochromatic image is enough in this case.
-* Random brightness variations.
+* Using only the luminance channel of the image. There are enough details in monochromatic image.
+* Random brightness variations in order to handle different lightning situation.
 * Using HSV image instead of RGB
 * Cropping: crop area was first 90x270 pixels area. Upper left corner where the crop was taken was (25,45). This removed quite 
 of amount of sky and forest above the horizon, and the lowest part of the image.   
-* Shifting image horizontally and adjusting steering angle accordingly. This was implemented by varying the crop place on the original image. 
-This was not used in the final model.
+* Shifting image horizontally and adjusting steering angle accordingly. This was implemented by varying the position of cropping in 
+the original image. This could have been used for image augmentation was, but the final model did not utilize the method.
 * Resizing: the very first model used 16x48 images resized from 90x270 crops.
+* Random image flipping: Although there was about the same amount of left and right turns in the data set, random flipping was added,
+in order to guaranteed that there is not unnecessary bias on single training batches.
+
 
 
 The final version uses following image pre-processing. All this is done 'on the fly' via data generator (see below):
-* Cropping: final crops have size of 90x320 and taken from upper left corner (50,0). Full width allows the model to use whole image width.
+* Cropping: final crops have size of 90x320 and taken from point (50,0) of the camera image. Full width allows the model to 
+use the whole width (road area) of the original image.
 * The crop of 90x320 are resized to 66x200, which is the original NVIDIA size. 
-* Converting RGB to HSV color space, and redusing image to saturation channel only (monochromatic). Using HSV was empirically observed to be best 
-approach and saturation channel alone gave equally good results.
-* Normalizing values to [-0.5,0.5]. A good practice to the mean of training data close to zero. This could have been done in Keras model,
-but because I was not using GPU, I'd like to do it separately and have better control to what is happening (for example can preview the images 
-that come out of the preprocessing.)
+* Converting RGB to HSV colour space, and reducing image size to saturation channel only (monochromatic).
+Using HSV was empirically observed to be best approach and saturation channel alone gave equally good results. 
+Because of this, brightness variations of the image became obsolete.
+* Normalising values to [-0.5,0.5]. A good practice to the mean of training data close to zero. This could have been done in Keras model,
+but because I was not using GPU, I'd like to do it separately and have better control to what is happening (for example can preview the images that come out of the preprocessing.)
+* Flipping
 
 
-Sample camera picture and the corresponding generated data frame.
+Below is a sample camera picture and the corresponding preprocessed data frame.
 
 <img src="images/preprocess.png" width="480" alt="Angle distribution" />
 
 
 ## 3. The Model
 
+I started with a small model with one convolutional layer and a couple of fully connected layers. At the same time,
+however, I was struggling with data preprocessing and data quality issues. So very soon I turned to proven solution described in 
+[NVIDIA's blog](https://devblogs.nvidia.com/parallelforall/deep-learning-self-driving-cars/) and 
+[the research paper](https://arxiv.org/pdf/1604.07316v1.pdf). 
 
+Keras was used to implement the model.
 
+During the process I also tried adding dropouts, pooling layers and L2-regularisers. Dropout was added after 
+the last convolutional layer. It was removed later, because the produce model performed better without it. 
+Also regularisers were removed, because those seem to have no effect to the trained model. Same was with
+pooling layer.
 
-____________________________________________________________________________________________________
+The final CNN corresponds quite closely to the original from NVIDIA. The model used mean squared error as loss function,
+and Adam optimiser with default learning rate as starting point.
+
+NVIDIA model as printed from Keras model.summary()
+
+```
 Layer (type)                     Output Shape          Param #     Connected to                     
 ====================================================================================================
 convolution2d_1 (Convolution2D)  (None, 31, 98, 24)    624         convolution2d_input_1[0][0]      
@@ -115,12 +135,81 @@ y_pred (Dense)                   (None, 1)             11          activation_8[
 Total params: 251,019
 Trainable params: 251,019
 Non-trainable params: 0
+```
 
 ## 4. The Generator
+
+There is a data generator implementation. The generator produces one training batch from the data set, and 
+yield it to the model. Center camera images are processed a little bit differently than side camera images
+(see Training below). For this the generator has an input parameter to tell what camera images are produced.
+Also, the same generator can be used to produce validation data.
+
+The list of images and corresponding steering angles is loaded into the memory before training start. The 
+generator maintains an index array to this list. The index array is first shuffled and again when the whole
+array has been processed. In the generator loop, preprocessed images are retrieved and place to batch array.
+When a whole batch is generated, it is given to the model.
 
 
 ## 5. Training
 
+After numerous trials and errors, the following training method was used:
+
+1. First train the model using (almost) all center images (1 epoch only). 
+2. Test the model how good it performs on a simulator. Model is save after each epoch.
+3. 1. and 2. was iterated mainly changing image preprocessing methods.
+4. After a well performing model was found (car could drive up to the bridge or even straight over it), start training
+recovery (back to the center lane) behaviour. Side camera images was used for that. Training was done by fine-tuning the 
+model from step 1.
+5. Stop when the car passes both tracks (without too much swinging from side to side)
+
+Steps 4 and 5 should add the ‘return to center’ behaviour to the model. In the phase I had to adjust two things. 
+First, the steering angle adjustment of the camera image, and secondly the amount of batches/epochs to add to original model.
+
+It was quite easy to add the recovery feature by adding big enough shift to the angle (to the opposite direction). However this 
+easily made the car squirm around on the straight sections of the road. Remedy to this was to proportionally adjust the angle
+depending on the original steering angle. The bigger the angle the larger the adjustment. And other way round, on the straight 
+section, there was very little adjustment.  
+
+```
+camera_corr = abs(angle) * np.random.uniform(2.0,4.0)
+# left camera: pos==0, right camera: pos==2
+ angle = angle +  (pos * -camera_corr + camera_corr)
+``` 
+
+The other question was, how to train for the recovery. Surprisingly only one epoch of 1/4 of the training data was needed.
+This means that only 1/8 of left camera and 1/8 of right camera images was needed. In generator it is randomly selected 
+which camera image to use.
+
 
 ## 6. Validating and Testing
-...
+
+Validation data set was initially used for tracking how well augmented data matched to original data set, and which is the best training
+epoch. When image size was 90x270, randomly shifted crops were selected to validation data set.
+
+After moving to 90x320 images, no shifted images were used. Also, at this point was quite clear, that one epoch of all images is 
+enough to produce the basic data set, so no validation was needed.
+
+The model was validated on the training track. And also tested on the testing track. When car could pass the both tracks, 
+model was assumed good enough. 
+
+If programmatic validation is needed, the augmentation is easily added to the generator.
+
+
+## 7. Code and Files
+
+- `nvidia_keras.ipynb`: Jupiter Notebook that contain all kind of experiments, but also the code that was used to produce the model.
+- `model.py`: the code that produced the model. **NOTE:** This code has not been run ever! The content is extract from `nvidia_keras.ipynb`
+in order to clarify what code was actually used.
+- `drive.py`: Data producer for the simulator from Udacity. I added some image preprocessing and naive dynamic throttling, which tries 
+to keep steady 20 mph speed (without too much luck though, so more serious effort is needed here)
+- `model.json`: loadable Keras model
+- `model.h5`: weights for the model
+
+
+## 8. Conclusion
+
+The project required a lot of work, and moments of despair could not have been avoided. On the other hand, it also taught
+many things. I have enjoyed the numerous blog posts of the fellow students and all slack conversations. It is wonderful how the
+same goal can be achieved in so many ways. The importance of good quality data, and reuse of existing 
+neural network architectures are two big things to take home.
+
