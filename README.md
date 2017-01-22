@@ -88,7 +88,8 @@ the last convolutional layer. It was removed later, because the produce model pe
 Also regularisers were removed, because those seem to have no effect to the trained model. Same was with
 pooling layer.
 
-The final CNN corresponds quite closely to the original from NVIDIA. The model used mean squared error as loss function,
+The final CNN corresponds quite closely to the original from NVIDIA. The input is different, because I used
+monochromatic images. The model used mean squared error as loss function,
 and Adam optimiser with default learning rate as starting point.
 
 NVIDIA model as printed from Keras model.summary()
@@ -140,13 +141,13 @@ Non-trainable params: 0
 ## 4. The Generator
 
 There is a data generator implementation. The generator produces one training batch from the data set, and 
-yield it to the model. Center camera images are processed a little bit differently than side camera images
-(see Training below). For this the generator has an input parameter to tell what camera images are produced.
+yields it to the model. Center camera images are processed a little bit differently than side camera images
+(see Training below). Because of this the generator has an input parameter to tell what camera images are produced.
 Also, the same generator can be used to produce validation data.
 
-The list of images and corresponding steering angles is loaded into the memory before training start. The 
-generator maintains an index array to this list. The index array is first shuffled and again when the whole
-array has been processed. In the generator loop, preprocessed images are retrieved and place to batch array.
+The list of images and the corresponding steering angles are loaded into the memory before training starts. The 
+generator maintains an index array to this list. The index array is first shuffled, and again when the whole
+image list has been processed. In the generator loop, preprocessed images are retrieved and placed into the batch array.
 When a whole batch is generated, it is given to the model.
 
 
@@ -155,20 +156,21 @@ When a whole batch is generated, it is given to the model.
 After numerous trials and errors, the following training method was used:
 
 1. First train the model using (almost) all center images (1 epoch only). 
-2. Test the model how good it performs on a simulator. Model is save after each epoch.
-3. 1. and 2. was iterated mainly changing image preprocessing methods.
-4. After a well performing model was found (car could drive up to the bridge or even straight over it), start training
-recovery (back to the center lane) behaviour. Side camera images was used for that. Training was done by fine-tuning the 
-model from step 1.
+2. Test the model how good it performs on a simulator. The model is saved after each epoch.
+3. Do some thinking, adjust parameters (mainly image preprocessing, image sampling), and  iterate 1. and 2.
+4. After a well performing model has been found (it is the car can drive up to the bridge or over it), start training
+recovery (back to the center lane) behaviour. Use side camera images for that. Training is done by fine-tuning the 
+model from step 1-3.
 5. Stop when the car passes both tracks (without too much swinging from side to side)
 
-Steps 4 and 5 should add the ‘return to center’ behaviour to the model. In the phase I had to adjust two things. 
+Steps 4 and 5 should add the ‘return to center’ behaviour to the model with the help of left and right cameras. 
+In this phase I had to adjust two things. 
 First, the steering angle adjustment of the camera image, and secondly the amount of batches/epochs to add to original model.
 
 It was quite easy to add the recovery feature by adding big enough shift to the angle (to the opposite direction). However this 
-easily made the car squirm around on the straight sections of the road. Remedy to this was to proportionally adjust the angle
+easily made the car squirm around on the straight road. Remedy to this was to proportionally adjust the angle
 depending on the original steering angle. The bigger the angle the larger the adjustment. And other way round, on the straight 
-section, there was very little adjustment.  
+section, there should be very little adjustment.  
 
 ```
 camera_corr = abs(angle) * np.random.uniform(2.0,4.0)
@@ -176,20 +178,19 @@ camera_corr = abs(angle) * np.random.uniform(2.0,4.0)
  angle = angle +  (pos * -camera_corr + camera_corr)
 ``` 
 
-The other question was, how to train for the recovery. Surprisingly only one epoch of 1/4 of the training data was needed.
-This means that only 1/8 of left camera and 1/8 of right camera images was needed. In generator it is randomly selected 
-which camera image to use.
+The other question was, how to train for the recovery. Surprisingly only one epoch and 1/4 of the training data was needed.
+- this is 1/8 of left camera and 1/8 of right camera images. It is randomly selected in the generator
+which on of the side cameras to use.
 
 
 ## 6. Validating and Testing
 
-Validation data set was initially used for tracking how well augmented data matched to original data set, and which is the best training
-epoch. When image size was 90x270, randomly shifted crops were selected to validation data set.
+Initially, I used validation data set for tracking how well augmented data matched to original data set, and to find out which is the best training epoch. When image size was 90x270, randomly shifted crops were selected to validation data set.
 
-After moving to 90x320 images, no shifted images were used. Also, at this point was quite clear, that one epoch of all images is 
-enough to produce the basic data set, so no validation was needed.
+After moving to 90x320 images, no shifted images were used. Also, at this point was quite clear, that only one epoch of all images is 
+enough to produce the basic weight set, so no validation was needed.
 
-The model was validated on the training track. And also tested on the testing track. When car could pass the both tracks, 
+The model was validated on the training track. And also tested on the testing track. When the car could drive autonomously both tracks, the
 model was assumed good enough. 
 
 If programmatic validation is needed, the augmentation is easily added to the generator.
@@ -198,10 +199,10 @@ If programmatic validation is needed, the augmentation is easily added to the ge
 ## 7. Code and Files
 
 - `nvidia_keras.ipynb`: Jupiter Notebook that contain all kind of experiments, but also the code that was used to produce the model.
-- `model.py`: the code that produced the model. **NOTE:** This code has not been run ever! The content is extract from `nvidia_keras.ipynb`
+- `model.py`: the code that produced the model. **NOTE:** This code has not been run ever from this file! The content is extract from `nvidia_keras.ipynb` only to clarify which part of the notebook code contributes to the model.
 in order to clarify what code was actually used.
-- `drive.py`: Data producer for the simulator from Udacity. I added some image preprocessing and naive dynamic throttling, which tries 
-to keep steady 20 mph speed (without too much luck though, so more serious effort is needed here)
+- `drive.py`: Data producer for the simulator, originally from Udacity. I added some image preprocessing and naive dynamic throttling, which tries 
+to keep steady 20 mph speed (without too much luck  - more serious effort is needed here)
 - `model.json`: loadable Keras model
 - `model.h5`: weights for the model
 
